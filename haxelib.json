@@ -1,0 +1,12 @@
+{
+  "name": "hx_arabic_shaper",
+  "url" : "https://github.com/TerryCavanagh/hx_arabic_shaper",
+  "license": "MIT",
+  "tags": ["cross", "utility"],
+  "description": "A library to help shaping Arabic text and dealing with BIDI.",
+  "version": "0.0.1",
+  "classPath": "src",
+  "releasenote": "Initial release.",
+  "contributors": ["mrcdk","TerryCavanagh"],
+  "dependencies": {}
+}
