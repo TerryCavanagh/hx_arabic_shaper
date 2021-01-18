@@ -45,7 +45,7 @@ public static function dispose() {
 }
 ```
 
-You can only enable or disable ligatures **before** initializing the reshaper. Once initialized changing the ligatures config won't do anything. Check [ReshaperConfig.hx](ReshaperConfig.hx) for the full list of options and ligatures you can enable or disable.
+You can only enable or disable ligatures **before** initializing the reshaper. Once initialized changing the ligatures config won't do anything. Check [ReshaperConfig.hx](src/hx_arabic_shaper/ReshaperConfig.hx) for the full list of options and ligatures you can enable or disable.
 
 After that, To shape Arabic text you'll need to do:
 ```haxe
