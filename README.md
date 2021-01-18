@@ -20,7 +20,7 @@ Add it to your `build.hxml` (or similar) with:
 
 or add it to your `project.xml` if you are using OpenFL/Lime with:
 ```xml
-<lib>hx_arabic_shaper</lib>
+<haxelib>hx_arabic_shaper</haxelib>
 ```
 
 You'll need to initialize it to build the ligatures cache and dispose it to destroy that cache:
