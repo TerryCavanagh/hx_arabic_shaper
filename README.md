@@ -25,7 +25,8 @@ or add it to your `project.xml` if you are using OpenFL/Lime with:
 
 You'll need to initialize it to build the ligatures cache and dispose it to destroy that cache:
 ```haxe
-import arabic_reshaper.ArabicReshaper;
+import hx_arabic_shaper.ArabicReshaper;
+import hx_arabic_shaper.bidi.UBA;
 
 ...
 
@@ -52,6 +53,8 @@ After that, To shape Arabic text you'll need to do:
 function print(text:String) {
   // Get the shaped text
   var shaped = ArabicReshaper.reshape(text);
+  // Process the BIDI algorithm
+  var bidi = UBA.display(shaped);
   // Render it
 }
 ```

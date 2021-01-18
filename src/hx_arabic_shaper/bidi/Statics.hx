@@ -1,6 +1,5 @@
 package hx_arabic_shaper.bidi;
 
-import haxe.Utf8;
 import hx_arabic_shaper.utils.UTF8String;
 
 @:enum abstract DirectionalOverride(Int) from Int to Int {
@@ -50,7 +49,7 @@ class CharStruct {
   public var charcode(get,never):Int;
 
   inline function get_charcode() {
-    return Utf8.charCodeAt(ch, 0);
+    return ch.charCodeAt(0);
   }
   
   public function new() {}

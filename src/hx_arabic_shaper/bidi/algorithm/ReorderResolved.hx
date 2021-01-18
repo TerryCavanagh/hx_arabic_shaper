@@ -5,6 +5,7 @@ import hx_arabic_shaper.bidi.Statics.*;
 import hx_arabic_shaper.bidi.database.UnicodeData;
 import hx_arabic_shaper.bidi.database.BidiBrackets;
 import hx_arabic_shaper.utils.ReverseIterator;
+import hx_arabic_shaper.utils.DynamicAccess;
 
 class ReorderResolved {
 

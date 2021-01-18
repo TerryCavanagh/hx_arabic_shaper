@@ -7,8 +7,6 @@ import hx_arabic_shaper.utils.UTF8String;
 import hx_arabic_shaper.utils.DynamicAccess;
 import hx_arabic_shaper.utils.ArrayMap;
 
-import haxe.Utf8;
-
 using StringTools;
 
 class ArabicReshaper {

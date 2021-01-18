@@ -3,12 +3,11 @@ package hx_arabic_shaper.bidi;
 import hx_arabic_shaper.bidi.Statics;
 import hx_arabic_shaper.bidi.algorithm.*;
 import hx_arabic_shaper.utils.DynamicAccess;
-import haxe.Utf8;
 import hx_arabic_shaper.utils.UTF8String;
 
 class UBA {
 
-  public static function display_paragraph(string:UTF8String) {
+  public static function display_paragraph(string:UTF8String):UTF8String {
     var data = Statics._get_data_struct();
 
     data.chars = Paragraph.preprocess_text(string);
@@ -25,12 +24,12 @@ class UBA {
 
     ReorderResolved.reorder_resolved_levels(data);
 
-    var result:Utf8 = new Utf8();
+    var result:UTF8String = "";
     for (ch in data.chars) {
-      result.addChar(ch.charcode);
+      result += ch.ch;
     }
 
-    return result.toString();
+    return result;
   }
 
   public static function display(text:UTF8String):UTF8String {

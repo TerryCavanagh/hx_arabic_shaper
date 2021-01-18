@@ -2,7 +2,6 @@ package hx_arabic_shaper.bidi.database;
 
 import hx_arabic_shaper.bidi.database.UnicodeDB;
 import hx_arabic_shaper.utils.UTF8String;
-import haxe.Utf8;
 
 class UnicodeData {
 
@@ -14,7 +13,7 @@ class UnicodeData {
   public static inline var SHIFT = 7;
 
   public static function bidirectional(ch:UTF8String) {
-    var code = Utf8.charCodeAt(ch, 0);
+    var code = ch.charCodeAt(0);
     var index = 0;
     if (code < 0x110000) {
       var sh1 = code >> SHIFT;
@@ -32,7 +31,7 @@ class UnicodeData {
   }
 
   public static function mirrored(ch:UTF8String) {
-    var code = Utf8.charCodeAt(ch, 0);
+    var code = ch.charCodeAt(0);
     var index = 0;
     if (code < 0x110000) {
       index = index1[code >> SHIFT];

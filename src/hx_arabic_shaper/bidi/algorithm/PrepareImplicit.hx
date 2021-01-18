@@ -2,7 +2,6 @@ package hx_arabic_shaper.bidi.algorithm;
 
 import hx_arabic_shaper.bidi.Statics;
 import hx_arabic_shaper.bidi.Statics.*;
-import haxe.Utf8;
 
 class PrepareImplicit {
 
