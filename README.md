@@ -31,7 +31,10 @@ import arabic_reshaper.ArabicReshaper;
 
 public static function init() {
   // your init code
-  ArabicReshaper.init();
+  // change the config if you need it, it's optional
+  var config = ArabicReshaper.getDefaultConfig();
+  config.delete_harakat = true;
+  ArabicReshaper.init(config);
 }
 
 ...
@@ -41,6 +44,8 @@ public static function dispose() {
   ArabicReshaper.dispose();
 }
 ```
+
+You can only enable or disable ligatures **before** initializing the reshaper. Once initialized changing the ligatures config won't do anything. Check [ReshaperConfig.hx](ReshaperConfig.hx) for the full list of options and ligatures you can enable or disable.
 
 After that, To shape Arabic text you'll need to do:
 ```haxe
