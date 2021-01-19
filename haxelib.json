@@ -7,6 +7,6 @@
   "version": "0.0.1",
   "classPath": "src",
   "releasenote": "Initial release.",
-  "contributors": ["mrcdk","TerryCavanagh"],
+  "contributors": ["TerryCavanagh","mrcdk"],
   "dependencies": {}
 }
