@@ -8,6 +8,11 @@ Install it with:
 haxelib install hx_arabic_shaper
 ```
 
+Or if you want to use the git version:
+```
+haxelib git hx_arabic_shaper https://github.com/TerryCavanagh/hx_arabic_shaper.git
+```
+
 if you aren't going to use this library in a OpenFL/Lime project and you are using Haxe 3.x, install [unifill](https://github.com/mandel59/unifill) with:
 ```
 haxelib install unifill
@@ -62,6 +67,7 @@ function print(text:String) {
 ## Gotchas
 - Mixing LTR and RTL text in the same sentence may not work correctly. You'll need to use the [Unicode directional formatting codes](https://www.unicode.org/reports/tr9/#Directional_Formatting_Codes) to force part of the text one way or the other depending on the result you want to achieve.
 - Shaping numbers is finicky. Depending on what you want to achieve you'll need to use those Unicode directional formatting codes to format them correctly.
+- The BIDI algorithm might work with other languages but it's untested.
 
 If you find any issues feel free to report them. It'd be really helpful if you could check if the issue can be reproduced in the original library before opening the issue here. Thanks!
 
