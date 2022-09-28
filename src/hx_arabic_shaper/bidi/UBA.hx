@@ -24,10 +24,8 @@ class UBA {
 
     ReorderResolved.reorder_resolved_levels(data);
 
-    var result:UTF8String = "";
-    for (ch in data.chars) {
-      result += ch.ch;
-    }
+    var chars = data.chars.map(function(ch) return ch.ch);
+    var result:UTF8String = chars.join("");
 
     return result;
   }

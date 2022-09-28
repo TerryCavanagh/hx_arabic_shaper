@@ -255,10 +255,8 @@ class ArabicReshaper {
 			}
 		}
 
-		var str_result:UTF8String = "";
-		for (s in result) {
-			str_result += s;
-		}
+		
+		var str_result:UTF8String = result.join("");
 
 		return str_result;
 	}
