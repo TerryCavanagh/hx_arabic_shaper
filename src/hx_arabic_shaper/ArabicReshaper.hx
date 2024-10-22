@@ -1,11 +1,13 @@
 package hx_arabic_shaper;
 
-import hx_arabic_shaper.Ligatures.LIGATURES;
 import hx_arabic_shaper.Letters;
+import hx_arabic_shaper.Ligatures.LIGATURES;
 import hx_arabic_shaper.ReshaperConfig;
-import hx_arabic_shaper.utils.UTF8String;
-import hx_arabic_shaper.utils.DynamicAccess;
+import hx_arabic_shaper.bidi.Statics;
+import hx_arabic_shaper.bidi.algorithm.*;
 import hx_arabic_shaper.utils.ArrayMap;
+import hx_arabic_shaper.utils.DynamicAccess;
+import hx_arabic_shaper.utils.UTF8String;
 
 using StringTools;
 
@@ -16,9 +18,7 @@ class ArabicReshaper {
 	// [https://github.com/agawish/Better-Arabic-Reshaper/]
 	// Email: mpcabd@gmail.com
 	// Website: http://mpcabd.xyz
-	
 	// Ported and tweaked from Python to Haxe by mrcdk
-	
 	public static var ISOLATED = Letters.ISOLATED;
 	public static var TATWEEL = Letters.TATWEEL;
 	public static var ZWJ = Letters.ZWJ;
@@ -42,22 +42,22 @@ class ArabicReshaper {
 	}
 
 	public static function init(?reshaper_config:ReshaperConfig) {
-		
-		if(initialized) {
+		if (initialized) {
 			return;
 		}
 
-		if(reshaper_config != null) {
+		if (reshaper_config != null) {
 			config = reshaper_config;
 		}
 
-		HARAKAT_RE = new EReg('[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ed\u08d4-\u08e1\u08d4-\u08ed\u08e3-\u08ff]', "gu");
-		
+		HARAKAT_RE = new EReg('[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06dc\u06df-\u06e8\u06ea-\u06ed\u08d4-\u08e1\u08d4-\u08ed\u08e3-\u08ff]',
+			"gu");
+
 		var ligature_matches = [];
 		var idx = 1;
-		for(ligature in LIGATURES) {
+		for (ligature in LIGATURES) {
 			var name = ligature[0];
-			if(!config.ligature_config.get(name, false)) {
+			if (!config.ligature_config.get(name, false)) {
 				continue;
 			}
 			var replacement:Array<Dynamic> = ligature[1];
@@ -79,6 +79,206 @@ class ArabicReshaper {
 		group_index_to_ligature_name = new ArrayMap();
 
 		initialized = false;
+	}
+
+	public static function bidi_and_shape(text:UTF8String,
+			?userdatacb:(index:Int, ch:UTF8String) -> Dynamic):Array<CharStruct> {
+		var result = [];
+
+		var data = Statics._get_data_struct();
+
+		data.chars = Paragraph.preprocess_text(text, userdatacb);
+		data.level = Paragraph.get_paragraph_level(data.chars);
+
+		Explicit.explicit_levels_and_directions(data);
+		PrepareImplicit.preparations_for_implicit_processing(data);
+		ResolveWeak.resolve_weak_types(data);
+		ResolveNeutral.resolve_neutral_and_isolate_formatting_types(data);
+		ResolveImplicit.resolve_implicit_levels(data);
+
+		shape(text, data);
+
+		ReorderResolved.reorder_resolved_levels(data);
+
+		return cast data.chars;
+	}
+
+	static function shape(text:UTF8String, data:DataStruct) {
+		if (!initialized) {
+			init();
+		}
+
+		var output:Array<{char:CharStruct, form:Int}> = [];
+
+		var NOT_SUPPORTED = -1;
+
+		var delete_harakat = config.delete_harakat;
+		var shift_harakat_position = config.shift_harakat_position;
+		var delete_tatweel = config.delete_tatweel;
+		var support_zwj = config.support_zwj;
+
+		var positions_harakat = new Map<Int, Array<CharStruct>>();
+		var isolated_form = config.use_unshaped_instead_of_isolated ? UNSHAPED : ISOLATED;
+
+		for (char in data.chars) {
+			var letter = char.ch;
+			if (HARAKAT_RE.match(letter)) {
+				if (!delete_harakat) {
+					var position = output.length - 1;
+					if (shift_harakat_position) {
+						position -= 1;
+					}
+					if (!positions_harakat.exists(position)) {
+						positions_harakat.set(position, []);
+					}
+
+					if (shift_harakat_position) {
+						positions_harakat[position].insert(0, char);
+					} else {
+						positions_harakat[position].push(char);
+					}
+				}
+			} else if (letter == TATWEEL && delete_tatweel) {
+				// nothing
+			} else if (letter == ZWJ && !support_zwj) {
+				// nothing
+			} else if (!LETTERS.exists(letter)) {
+				output.push({char: char, form: NOT_SUPPORTED});
+			} else if (output.length == 0) { // first letter
+				output.push({char: char, form: isolated_form});
+			} else {
+				var previous_letter = output[output.length - 1];
+				if (previous_letter.form == NOT_SUPPORTED) {
+					output.push({char: char, form: isolated_form});
+				} else if (!Letters.connects_with_letter_before(letter)) {
+					output.push({char: char, form: isolated_form});
+				} else if (!Letters.connects_with_letter_after(previous_letter.char.ch)) {
+					output.push({char: char, form: isolated_form});
+				} else if (previous_letter.form == FINAL
+					&& !Letters.connects_with_letters_before_and_after(previous_letter.char.ch)) {
+					output.push({char: char, form: isolated_form});
+				} else if (previous_letter.form == isolated_form) {
+					output[output.length - 1].char = previous_letter.char;
+					output[output.length - 1].form = INITIAL;
+					output.push({char: char, form: FINAL});
+				} else {
+					// Otherwise, we will change the previous letter to connect
+					// to the current letter
+					output[output.length - 1].char = previous_letter.char;
+					output[output.length - 1].form = MEDIAL;
+					output.push({char: char, form: FINAL});
+				}
+			}
+
+			// Remove ZWJ if it's the second to last item as it won't be useful
+			if (support_zwj && output.length > 1 && output[output.length - 2].char.ch == ZWJ) {
+				output.splice(output.length - 2, 1);
+			}
+		}
+
+		if (support_zwj && output.length > 1 && output[output.length - 1].char.ch == ZWJ) {
+			output.pop();
+		}
+
+		if (config.support_ligatures) {
+			// Clean text from Harakat to be able to find ligatures
+			text = HARAKAT_RE.replace(text, "");
+
+			// Clean text from Tatweel to find ligatures if delete_tatweel
+			if (delete_tatweel) {
+				text = text.replace(TATWEEL, "");
+			}
+
+			var groups:Array<DynamicAccess> = [];
+			var tstart = 0;
+			LIGATURE_RE.map(text, function(r) {
+				for (idx in group_index_to_ligature_forms.keys()) {
+					var matched:UTF8String = r.matched(idx);
+					if (matched != null && matched != "") {
+						var s = text.indexOf(matched, tstart);
+						var e = s + matched.length;
+						// trace(text, group_index_to_ligature_name.get(idx), matched, s, e);
+						groups.push({
+							"index": idx,
+							"start": s,
+							"end": e,
+						});
+						tstart = e;
+						break;
+					}
+				}
+				return "";
+			});
+
+			for (group in groups) {
+				var forms = group_index_to_ligature_forms.get(group["index"]);
+				var a:Int = group["start"];
+				var b:Int = group["end"];
+				var a_form = output[a].form;
+				var b_form = output[b - 1].form;
+				var ligature_form:Null<Int> = null;
+
+				// +-----------+----------+---------+---------+----------+
+				// | a   \   b | ISOLATED | INITIAL | MEDIAL  | FINAL    |
+				// +-----------+----------+---------+---------+----------+
+				// | ISOLATED  | ISOLATED | INITIAL | INITIAL | ISOLATED |
+				// | INITIAL   | ISOLATED | INITIAL | INITIAL | ISOLATED |
+				// | MEDIAL    | FINAL    | MEDIAL  | MEDIAL  | FINAL    |
+				// | FINAL     | FINAL    | MEDIAL  | MEDIAL  | FINAL    |
+				// +-----------+----------+---------+---------+----------+
+
+				if (a_form == isolated_form || a_form == INITIAL) {
+					if (b_form == isolated_form || b_form == FINAL) {
+						ligature_form = ISOLATED;
+					} else {
+						ligature_form = INITIAL;
+					}
+				} else {
+					if (b_form == isolated_form || b_form == FINAL) {
+						ligature_form = FINAL;
+					} else {
+						ligature_form = MEDIAL;
+					}
+				}
+
+				var form = forms[ligature_form];
+				if (form == "") {
+					continue;
+				}
+				output[a].char.ch = form;
+				output[a].form = NOT_SUPPORTED;
+				for (i in a + 1...b) {
+					output[i].char.ch = '';
+					output[i].form = NOT_SUPPORTED;
+				}
+			}
+		}
+
+		var result:Array<CharStruct> = [];
+
+		if (!delete_harakat && positions_harakat.exists(-1)) {
+			result = result.concat(positions_harakat.get(-1));
+		}
+
+		for (o in output) {
+			var i = output.indexOf(o);
+			if (o.char != null && o.char.ch != "") {
+				if (o.form == NOT_SUPPORTED || o.form == UNSHAPED) {
+					result.push(o.char);
+				} else {
+					o.char.ch = LETTERS[o.char.ch][o.form];
+					result.push(o.char);
+				}
+			}
+
+			if (!delete_harakat) {
+				if (positions_harakat.exists(i)) {
+					result = result.concat(positions_harakat.get(i));
+				}
+			}
+		}
+
+		data.chars = result;
 	}
 
 	public static function reshape(text:UTF8String):UTF8String {
@@ -137,7 +337,8 @@ class ArabicReshaper {
 					output.push([letter, isolated_form]);
 				} else if (!Letters.connects_with_letter_after(previous_letter[LETTER])) {
 					output.push([letter, isolated_form]);
-				} else if (previous_letter[FORM] == FINAL && !Letters.connects_with_letters_before_and_after(previous_letter[LETTER])) {
+				} else if (previous_letter[FORM] == FINAL
+					&& !Letters.connects_with_letters_before_and_after(previous_letter[LETTER])) {
 					output.push([letter, isolated_form]);
 				} else if (previous_letter[FORM] == isolated_form) {
 					output[output.length - 1] = [previous_letter[LETTER], INITIAL];
@@ -160,7 +361,7 @@ class ArabicReshaper {
 			output.pop();
 		}
 
-		if(config.support_ligatures) {
+		if (config.support_ligatures) {
 			// Clean text from Harakat to be able to find ligatures
 			text = HARAKAT_RE.replace(text, "");
 
@@ -172,12 +373,12 @@ class ArabicReshaper {
 			var groups:Array<DynamicAccess> = [];
 			var tstart = 0;
 			LIGATURE_RE.map(text, function(r) {
-				for(idx in group_index_to_ligature_forms.keys()) {
+				for (idx in group_index_to_ligature_forms.keys()) {
 					var matched:UTF8String = r.matched(idx);
-					if(matched != null && matched != "") {
+					if (matched != null && matched != "") {
 						var s = text.indexOf(matched, tstart);
 						var e = s + matched.length;
-						//trace(text, group_index_to_ligature_name.get(idx), matched, s, e);
+						// trace(text, group_index_to_ligature_name.get(idx), matched, s, e);
 						groups.push({
 							"index": idx,
 							"start": s,
@@ -190,12 +391,12 @@ class ArabicReshaper {
 				return "";
 			});
 
-			for(group in groups) {
+			for (group in groups) {
 				var forms = group_index_to_ligature_forms.get(group["index"]);
 				var a:Int = group["start"];
 				var b:Int = group["end"];
 				var a_form = output[a][FORM];
-				var b_form = output[b-1][FORM];
+				var b_form = output[b - 1][FORM];
 				var ligature_form:Null<Int> = null;
 
 				// +-----------+----------+---------+---------+----------+
@@ -222,7 +423,7 @@ class ArabicReshaper {
 				}
 
 				var form = forms[ligature_form];
-				if(form == "") {
+				if (form == "") {
 					continue;
 				}
 				output[a] = [form, NOT_SUPPORTED];
@@ -255,7 +456,6 @@ class ArabicReshaper {
 			}
 		}
 
-		
 		var str_result:UTF8String = result.join("");
 
 		return str_result;
